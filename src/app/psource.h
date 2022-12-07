@@ -8,7 +8,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -51,8 +51,7 @@
 #include "config.h"
 #include "psink.h"
 #include "app.h"
-#include "cy_sw_timer.h"
-#include "cy_sw_timer_id.h"
+#include "cy_pdutils_sw_timer.h"
 #include "cy_usbpd_vbus_ctrl.h"
 
 /*****************************************************************************

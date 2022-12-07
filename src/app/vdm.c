@@ -7,7 +7,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -40,10 +40,10 @@
 *******************************************************************************/
 
 #include "config.h"
-#include "cy_sw_timer.h"
+#include "cy_pdutils_sw_timer.h"
 #include "vdm.h"
 #include "cy_pdstack_common.h"
-#include "cy_pdstack_utils.h"
+#include "cy_pdutils.h"
 #include "app.h"
 
 /* Stores Discover ID response VDO count */
@@ -70,7 +70,7 @@ static uint8_t *gl_vdm_mode_data_p[NO_OF_TYPEC_PORTS];
 const vdm_info_config_t vdm_info[NO_OF_TYPEC_PORTS] =
 {
     {
-        .discId = {0xFF00A041, 0x19C004B4, 0x00000000, 0xF5030000, 0x40000000},
+        .discId = {0xFF00A041, 0x19C004B4, 0x00000000, 0xF5010000, 0x40000000},
         .dIdLength = 0x18,
         .sVidLength = 0,
         .disModeLength = 0,
@@ -215,7 +215,7 @@ void eval_vdm(cy_stc_pdstack_context_t * context, const cy_stc_pdstack_pd_packet
 
 #if CY_PD_REV3_ENABLE
         /* Use the minimum VDM version from among the partner's revision and the live revision. */
-        app_stat->vdm_version = GET_MIN (app_stat->vdm_version, vdm->dat[CY_PD_VDM_HEADER_IDX].std_vdm_hdr.stVer);
+        app_stat->vdm_version = CY_PDUTILS_GET_MIN (app_stat->vdm_version, vdm->dat[CY_PD_VDM_HEADER_IDX].std_vdm_hdr.stVer);
 #endif /* CY_PD_REV3_ENABLE */
 
         /* Set a NAK response by default. */
@@ -327,11 +327,18 @@ void eval_vdm(cy_stc_pdstack_context_t * context, const cy_stc_pdstack_pd_packet
         }
         else
         {
-            /* NAK VDMs addressed to any unknown SVID. */
-            if (vdm->dat[CY_PD_VDM_HEADER_IDX].std_vdm_hdr.svid == STD_SVID)
+            if (vdm->dat[CY_PD_VDM_HEADER_IDX].std_vdm_hdr.cmd == CY_PDSTACK_VDM_CMD_ATTENTION)
             {
-                /* No response to Standard VDMs received on PD 2.0 connection while in DFP state. */
+                /* Ignore Attention VDM */
                 app_stat->vdmResp.noResp = CY_PDSTACK_VDM_AMS_RESP_NOT_REQ;
+            }
+            else
+            {
+                if (vdm->dat[CY_PD_VDM_HEADER_IDX].std_vdm_hdr.svid == STD_SVID)
+                {
+                    /* Respond with a NAK to Standard VDMs received on PD 2.0 connection while in DFP role. */
+                    app_stat->vdmResp.respBuf[CY_PD_VDM_HEADER_IDX].std_vdm_hdr.cmdType = CY_PDSTACK_CMD_TYPE_RESP_NAK;
+                }
             }
         }
 

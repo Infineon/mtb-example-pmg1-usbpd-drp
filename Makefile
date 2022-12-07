@@ -7,7 +7,7 @@
 #
 ################################################################################
 # \copyright
-# Copyright 2021, Cypress Semiconductor Corporation (an Infineon company)
+# Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company)
 # SPDX-License-Identifier: Apache-2.0
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,14 @@
 # Basic Configuration
 ################################################################################
 
+# Type of ModusToolbox Makefile Options include:
+#
+# COMBINED    -- Top Level Makefile usually for single standalone application
+# APPLICATION -- Top Level Makefile usually for multi project application
+# PROJECT     -- Project Makefile under Application
+#
+MTB_TYPE=COMBINED
+
 # Target board/hardware (BSP).
 # To change the target, it is recommended to use the Library manager
 # ('make modlibs' from command line), which will also update Eclipse IDE launch
@@ -35,7 +43,6 @@
 # valid URL exists in the application, run 'make getlibs' to fetch BSP contents
 # and update or regenerate launch configurations for your IDE.
 TARGET=PMG1-CY7113
-
 
 # Name of application (used to derive name of final linked file).
 #
@@ -80,11 +87,10 @@ VERBOSE=
 # ... then code in directories named COMPONENT_foo and COMPONENT_bar will be
 # added to the build
 #
-
-COMPONENTS+=CUSTOM_DESIGN_MODUS PMG1_PD3_DRP
+COMPONENTS=PMG1_PD3_DRP
 
 # Like COMPONENTS, but disable optional code that was enabled by default.
-DISABLE_COMPONENTS=BSP_DESIGN_MODUS
+DISABLE_COMPONENTS=
 
 # By default the build system automatically looks in the Makefile's directory
 # tree for source code and builds it. The SOURCES variable can be used to
@@ -99,8 +105,14 @@ INCLUDES=
 # Add additional defines to the build process (without a leading -D).
 # Enabled PD revision 3.0 support, VBus OV Fault Protection and Deep Sleep mode in idle states.
 DEFINES=CY_PD_SINK_ONLY=0 CY_PD_SOURCE_ONLY=0 CY_PD_REV3_ENABLE=1 CY_PD_CBL_DISC_DISABLE=0 \
-		VBUS_OVP_ENABLE=1 VBUS_UVP_ENABLE=0 VBUS_RCP_ENABLE=1 VBUS_SCP_ENABLE=1 VCONN_OCP_ENABLE=1 \
-		VBUS_OCP_ENABLE=1 SYS_DEEPSLEEP_ENABLE=1 CY_PD_USB4_SUPPORT_ENABLE=1
+		VBUS_OVP_ENABLE=1 VBUS_UVP_ENABLE=0 VBUS_OCP_ENABLE=1 SYS_DEEPSLEEP_ENABLE=1 \
+		CY_PD_USB4_SUPPORT_ENABLE=1
+
+ifeq ($(TARGET), PMG1-CY7112)
+	DEFINES+=VBUS_RCP_ENABLE=0 VBUS_SCP_ENABLE=0 VCONN_OCP_ENABLE=0
+else
+	DEFINES+=VBUS_RCP_ENABLE=1 VBUS_SCP_ENABLE=1 VCONN_OCP_ENABLE=1
+endif
 
 # Select softfp or hardfp floating point. Default is softfp.
 VFP_SELECT=

@@ -7,7 +7,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -43,7 +43,8 @@
 
 #include "cybsp.h"
 #include "ncp81239.h"
-#include "cy_sw_timer_id.h"
+#include "cy_pdutils_sw_timer.h"
+#include "timer_id.h"
 
 /*******************************************************************************
  * Header files including
@@ -61,6 +62,16 @@
     #define CY_PD_PPS_SRC_ENABLE                  (0u)
 #endif /* CY_PD_REV3_ENABLE */
 
+#if ((defined (CY_DEVICE_PMG1S3)) || (defined (CY_DEVICE_CCG6)))
+#define CCG_PROG_SOURCE_ENABLE                    (1u)
+#elif (defined(CY_DEVICE_CCG3))
+#define CCG_PROG_SOURCE_ENABLE                    (0u)
+#endif
+
+
+/* Enable hardware based DRP toggle for additional power saving. */
+#define CY_PD_HW_DRP_TOGGLE_ENABLE                (0u)
+
 /*
  * Macro defines additional delay in milliseconds before the PD stack starts sending
  * SRC_CAP message. This may be required to work with some non-compliant sink devices
@@ -70,7 +81,7 @@
 
 #define PD_PDO_SEL_ALGO                         (0u)
 
-/* VBUS NGDO FET Control selection based on the FET control pin used in the system hardware */
+/* VBUS PGDO FET Control selection based on the FET control pin used in the system hardware */
 #define VBUS_FET_CTRL_0                             (1u)
 #define VBUS_FET_CTRL_1                             (0u)
 
@@ -81,7 +92,11 @@
  ******************************************************************************/
 
 #define APP_VBUS_POLL_ADC_ID                    (CY_USBPD_ADC_ID_0)
+#if defined(CY_DEVICE_CCG3)
+#define APP_VBUS_POLL_ADC_INPUT                 (CY_USBPD_ADC_INPUT_AMUX_A)
+#else
 #define APP_VBUS_POLL_ADC_INPUT                 (CY_USBPD_ADC_INPUT_AMUX_B)
+#endif /* defined(CY_DEVICE_CCG3) */
 
 /*******************************************************************************
  * Power Sink (PSINK) controls
@@ -136,7 +151,7 @@
 #define VBUS_SOFT_START_ENABLE                  (0u)
 #endif /* (defined (CY_DEVICE_PMG1S3)) */
 
-#if ((defined (CY_DEVICE_PMG1S3)))
+#if ((defined (CY_DEVICE_PMG1S3)) || (defined (CY_DEVICE_CCG6)))
 /* Function/Macro to set P1 source voltage to contract value. */
 #define APP_VBUS_SET_VOLT_P1(mV)                    \
 {                                                   \
@@ -148,6 +163,43 @@
     set_pd_ctrl_voltage(TYPEC_PORT_1_IDX, mV);      \
 }
 
+#elif (defined(CY_DEVICE_CCG3))
+/* Function/Macro to set P1 source voltage to 5V. */
+#define APP_VBUS_SET_5V_P1()                        \
+{                                                   \
+   Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 0);              \
+   Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 0);              \
+}
+
+/* Function/Macro to set P1 source voltage to 9V. */
+#define APP_VBUS_SET_9V_P1()                        \
+{                                                   \
+   Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 1);              \
+   Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 0);              \
+}
+
+/* Function/Macro to set P1 source voltage to 12V. Not supported on CY4531. */
+#define APP_VBUS_SET_12V_P1()                       ((void)0)
+
+/* Function/Macro to set P1 source voltage to 13V. Not supported on CY4531. */
+#define APP_VBUS_SET_13V_P1()                       ((void)0)
+
+/* Function/Macro to set P1 source voltage to 15V. */
+#define APP_VBUS_SET_15V_P1()                       \
+{                                                   \
+    Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 0);             \
+    Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 1);             \
+}
+
+/* Function/Macro to set P1 source voltage to 19V. Not supported on CY4531. */
+#define APP_VBUS_SET_19V_P1()                       ((void)0)
+
+/* Function/Macro to set P1 source voltage to 20V. */
+#define APP_VBUS_SET_20V_P1()                       \
+{                                                   \
+    Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 1);             \
+    Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 1);             \
+}
 #endif /* (defined (CY_DEVICE_PMG1S3)) */
 
 /*******************************************************************************
@@ -206,9 +258,6 @@
 /* Disable device reset on error (watchdog expiry or hard fault). */
 #define RESET_ON_ERROR_ENABLE                       (1u)
 
-/* Watchdog reset timer id. */
-#define WATCHDOG_TIMER_ID                           (0xC2u)
-
 /*
  * Watchdog reset period in ms. This should be set to a value greater than
  * 500 ms to avoid significant increase in power consumption.
@@ -224,18 +273,6 @@
 /* Enable saving only SVIDs which are supported by CCG. */
 #define SAVE_SUPP_SVID_ONLY                         (1u)
 
-/** Timer used for providing delay for VBUS FET ON. */
-#define APP_VBUS_FET_ON_TIMER                       (APP_TIMERS_RESERVED_START_ID + 0u)
-
-/** Timer used for providing delay for VBUS FET OFF. */
-#define APP_VBUS_FET_OFF_TIMER                      (APP_TIMERS_RESERVED_START_ID + 1u)
-
-/** Timer used for providing delay for VConn Gate Pull Up enable. */
-#define APP_VCONN_TURN_ON_DELAY_TIMER               (APP_TIMERS_RESERVED_START_ID + 2u)
-
-/** Timer used to control soft turn-on of power FET gate drivers. */
-#define APP_FET_SOFT_START_TIMER_ID                 (APP_TIMERS_RESERVED_START_ID + 3u)
-    
 /** Timer period in ms for providing delay for VConn Gate Pull Up enable. */
 #define APP_VCONN_TURN_ON_DELAY_PERIOD              (1u)
 

@@ -8,7 +8,7 @@
 *
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -41,11 +41,10 @@
 *******************************************************************************/
 
 #include "cy_pdl.h"
-#include "cyhal.h"
 #include "cybsp.h"
 #include "config.h"
 
-#include "cy_sw_timer.h"
+#include "cy_pdutils_sw_timer.h"
 #include "cy_usbpd_common.h"
 #include "cy_pdstack_common.h"
 #include "cy_usbpd_typec.h"
@@ -62,7 +61,7 @@
 #include "ncp81239.h"
 #include "mtbcfg_ezpd.h"
 
-cy_stc_sw_timer_t        gl_TimerCtx;
+cy_stc_pdutils_sw_timer_t gl_TimerCtx;
 cy_stc_usbpd_context_t   gl_UsbPdPort0Ctx;
 
 cy_stc_pdstack_context_t gl_PdStackPort0Ctx;
@@ -127,13 +126,13 @@ static void wdt_interrupt_handler(void)
     /* Clear WDT pending interrupt */
     Cy_WDT_ClearInterrupt();
 
-#if (TIMER_TICKLESS_ENABLE == 0)
+#if (CY_PDUTILS_TIMER_TICKLESS_ENABLE == 0)
     /* Load the timer match register. */
-    Cy_WDT_SetMatch((Cy_WDT_GetCount() + gl_TimerCtx.gl_multiplier))
-#endif /* (TIMER_TICKLESS_ENABLE == 0) */
+    Cy_WDT_SetMatch((Cy_WDT_GetCount() + gl_TimerCtx.multiplier))
+#endif /* (CY_PDUTILS_TIMER_TICKLESS_ENABLE == 0) */
 
     /* Invoke the timer handler. */
-    cy_sw_timer_interrupt_handler (&(gl_TimerCtx));
+    Cy_PdUtils_SwTimer_InterruptHandler(&(gl_TimerCtx));
 }
 
 static void cy_usbpd0_intr0_handler(void)
@@ -170,11 +169,13 @@ const cy_stc_pdstack_app_cbk_t app_callback =
     vbus_is_present,
     vbus_discharge_on,
     vbus_discharge_off,
+#if (!(CY_PD_SOURCE_ONLY))
     psnk_set_voltage,
     psnk_set_current,
     psnk_enable,
     psnk_disable,
     eval_src_cap,
+#endif /* (!(CY_PD_SOURCE_ONLY)) */
 #if (!CY_PD_SINK_ONLY)
     eval_rdo,
 #endif  /* (!CY_PD_SINK_ONLY) */
@@ -183,9 +184,9 @@ const cy_stc_pdstack_app_cbk_t app_callback =
     eval_vconn_swap,
     eval_vdm,
 #if CY_PD_REV3_ENABLE
-#if (!CY_PD_SINK_ONLY)
+#if ((!(CY_PD_SOURCE_ONLY)) && (!CY_PD_SINK_ONLY))
     eval_fr_swap,
-#endif   /* (!CY_PD_SINK_ONLY) */
+#endif /* ((!(CY_PD_SOURCE_ONLY)) && (!CY_PD_SINK_ONLY))  */
 #endif /* CY_PD_REV3_ENABLE */
     vbus_get_value,
 #if (!CY_PD_SINK_ONLY)
@@ -203,9 +204,11 @@ cy_stc_pdstack_app_cbk_t* app_get_callback_ptr(cy_stc_pdstack_context_t * contex
     return ((cy_stc_pdstack_app_cbk_t *)(&app_callback));
 }
 
+
 int main(void)
 {
     cy_rslt_t result;
+    cy_stc_pdutils_timer_config_t timerConfig;
 
     /* Initialize the device and board peripherals */
     result = cybsp_init() ;
@@ -222,14 +225,19 @@ int main(void)
     Cy_SysInt_Init(&wdt_interrupt_config, &wdt_interrupt_handler);
     NVIC_EnableIRQ(wdt_interrupt_config.intrSrc);
 
+    timerConfig.sys_clk_freq = Cy_SysClk_ClkSysGetFrequency();
+    timerConfig.hw_timer_ctx = NULL;
+
     /* Initialize the soft timer module. */
-    cy_sw_timer_init(&gl_TimerCtx, Cy_SysClk_ClkSysGetFrequency());
+    Cy_PdUtils_SwTimer_Init(&gl_TimerCtx, &timerConfig);
 
     /* Enable global interrupts */
     __enable_irq();
 
+#if (defined(CY_DEVICE_PMG1S3) || defined(CY_DEVICE_CCG6))
     /* Enable NCP81239 controller */
     pd_ctrl_init ();
+#endif /* (defined(CY_DEVICE_PMG1S3) || defined(CY_DEVICE_CCG6)) */
 
     /* Initialize the instrumentation related data structures. */
     instrumentation_init();
@@ -245,15 +253,24 @@ int main(void)
     NVIC_EnableIRQ(usbpd_port0_intr1_config.intrSrc);
 
     /* Initialize the USBPD driver */
+#if defined(CY_DEVICE_CCG3)
+    Cy_USBPD_Init(&gl_UsbPdPort0Ctx, 0, mtb_usbpd_port0_HW, NULL,
+            (cy_stc_usbpd_config_t *)&mtb_usbpd_port0_config, get_dpm_connect_stat);
+#else
     Cy_USBPD_Init(&gl_UsbPdPort0Ctx, 0, mtb_usbpd_port0_HW, mtb_usbpd_port0_HW_TRIM,
             (cy_stc_usbpd_config_t *)&mtb_usbpd_port0_config, get_dpm_connect_stat);
 
     /* Make sure SCP and RCP blocks have been disabled. */
     Cy_USBPD_Fault_Vbus_ScpDisable(&gl_UsbPdPort0Ctx);
     Cy_USBPD_Fault_Vbus_RcpDisable(&gl_UsbPdPort0Ctx);
+#endif
 
+    /* Workaround for pd_ctrl_init () bug. Set to 5 V. */
+#if (defined(CY_DEVICE_CCG3))
+    APP_VBUS_SET_5V_P1();
+#elif (defined(CY_DEVICE_PMG1S3) || defined(CY_DEVICE_CCG6))
     APP_VBUS_SET_VOLT_P1(5000);
-
+#endif /* (defined(CY_DEVICE_CCG3)) */
     /* Initialize the Device Policy Manager. */
     Cy_PdStack_Dpm_Init(&gl_PdStackPort0Ctx,
                        &gl_UsbPdPort0Ctx,

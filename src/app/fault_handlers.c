@@ -7,7 +7,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -49,8 +49,7 @@
 #include "swap.h"
 #include "vdm.h"
 #include "app.h"
-#include "cy_sw_timer.h"
-#include "cy_sw_timer_id.h"
+#include "cy_pdutils_sw_timer.h"
 #include "cy_usbpd_vbus_ctrl.h"
 
 enum
@@ -201,7 +200,7 @@ static void app_handle_fault(cy_stc_pdstack_context_t * context, uint32_t fault_
         {
             /* Start VConn turn-off procedure and start a timer to restore VConn after a delay. */
             vconn_change_handler (context, false);
-            cy_sw_timer_start (context->ptrTimerContext, context, CY_PDSTACK_GET_APP_TIMER_ID(context, APP_VCONN_RECOVERY_TIMER), APP_VCONN_RECOVERY_PERIOD, vconn_restore_timer_cb);
+            Cy_PdUtils_SwTimer_Start (context->ptrTimerContext, context, GET_APP_TIMER_ID(context, APP_VCONN_RECOVERY_TIMER), APP_VCONN_RECOVERY_PERIOD, vconn_restore_timer_cb);
         }
         else
 #endif /* VCONN_OCP_ENABLE */
@@ -269,7 +268,7 @@ void fault_recovery_timer_cb(cy_timer_id_t id, void *context)
     }
 
     /* Restart the timer to check VBus and Rp status again. */
-    cy_sw_timer_start (ptrPdStackContext->ptrTimerContext, ptrPdStackContext, CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_FAULT_RECOVERY_TIMER), period, fault_recovery_timer_cb);
+    Cy_PdUtils_SwTimer_Start (ptrPdStackContext->ptrTimerContext, ptrPdStackContext, GET_APP_TIMER_ID(ptrPdStackContext, APP_FAULT_RECOVERY_TIMER), period, fault_recovery_timer_cb);
 }
 
 /* Callback used to get notification that PD port disable has been completed. */
@@ -293,7 +292,7 @@ static void app_port_disable_cb(cy_stc_pdstack_context_t * context, cy_en_pdstac
     }
 
     /* Provide a delay to allow VBus turn-on by port partner and then enable the port. */
-    cy_sw_timer_start (context->ptrTimerContext, context, CY_PDSTACK_GET_APP_TIMER_ID(context, APP_FAULT_RECOVERY_TIMER), period, fault_recovery_timer_cb);
+    Cy_PdUtils_SwTimer_Start (context->ptrTimerContext, context, GET_APP_TIMER_ID(context, APP_FAULT_RECOVERY_TIMER), period, fault_recovery_timer_cb);
 }
 #endif /* FAULT_HANDLER_ENABLE */
 
@@ -506,7 +505,7 @@ void fault_handler_task(cy_stc_pdstack_context_t * context)
 /* Configure Over-Voltage Protection checks based on parameters in config table. */
 void app_ovp_enable(cy_stc_pdstack_context_t * context, uint16_t volt_mV, bool pfet, cy_cb_vbus_fault_t ovp_cb)
 {
-    uint8_t intr_state;
+    uint32_t intr_state;
     cy_stc_fault_vbus_ovp_cfg_t * ovp_config = (cy_stc_fault_vbus_ovp_cfg_t *) context->ptrUsbPdContext->usbpdConfig->vbusOvpConfig;
 
     if (ovp_config->enable)
@@ -545,7 +544,7 @@ void app_ovp_disable(cy_stc_pdstack_context_t * context, bool pfet)
 /* Configure Under-Voltage Protection checks based on parameters in config table. */
 void app_uvp_enable(cy_stc_pdstack_context_t * context, uint16_t volt_mV, bool pfet, cy_cb_vbus_fault_t uvp_cb)
 {
-    uint8_t intr_state;
+    uint32_t intr_state;
     const cy_stc_fault_vbus_uvp_cfg_t * uvp_config = context->ptrUsbPdContext->usbpdConfig->vbusUvpConfig;
 
     if (uvp_config->enable)

@@ -8,7 +8,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -49,8 +49,8 @@
 #include "swap.h"
 #include "vdm.h"
 #include "app.h"
-#include "cy_sw_timer.h"
-#include "cy_sw_timer_id.h"
+#include "cy_pdutils_sw_timer.h"
+#include "cy_pdstack_timer_id.h"
 #include "cy_gpio.h"
 
 extern cy_stc_pdstack_context_t *get_pdstack_context(uint8_t portIdx);
@@ -65,7 +65,7 @@ static void app_cbl_dsc_callback (cy_stc_pdstack_context_t *ptrPdStackContext, c
     /* Keep repeating the DPM command until we succeed. */
     if (resp == CY_PDSTACK_SEQ_ABORTED)
     {
-        cy_sw_timer_start (ptrPdStackContext->ptrTimerContext, ptrPdStackContext , CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_CBL_DISC_TRIGGER_TIMER), APP_CBL_DISC_TIMER_PERIOD, app_cbl_dsc_timer_cb);
+        Cy_PdUtils_SwTimer_Start (ptrPdStackContext->ptrTimerContext, ptrPdStackContext , GET_APP_TIMER_ID(ptrPdStackContext, APP_CBL_DISC_TRIGGER_TIMER), APP_CBL_DISC_TIMER_PERIOD, app_cbl_dsc_timer_cb);
     }
 }
 
@@ -158,7 +158,7 @@ bool app_extd_msg_handler(cy_stc_pdstack_context_t *ptrPdStackContext, cy_stc_pd
         extd_dpm_buf.extdHdr.extd.request = true;
         extd_dpm_buf.extdHdr.extd.chunkNum = pd_pkt_p->hdr.hdr.chunkNum + 1;
         extd_dpm_buf.datPtr = (uint8_t*)&gl_extd_dummy_data;
-        extd_dpm_buf.timeout = CY_PD_SENDER_RESPONSE_TIMER_PERIOD;
+        extd_dpm_buf.timeout = ptrPdStackContext->senderRspTimeout;
 
         /* Send next chunk request */
         Cy_PdStack_Dpm_SendPdCommand(ptrPdStackContext,CY_PDSTACK_DPM_CMD_SEND_EXTENDED,
@@ -216,8 +216,8 @@ static void app_role_swap_resp_cb (cy_stc_pdstack_context_t *ptrPdStackContext,
             app_stat->actv_swap_count++;
             if (app_stat->actv_swap_count < APP_MAX_SWAP_ATTEMPT_COUNT)
             {
-                cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-                        CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), app_stat->actv_swap_delay, app_initiate_swap);
+                Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+                        GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), app_stat->actv_swap_delay, app_initiate_swap);
             }
             else
             {
@@ -243,8 +243,8 @@ static void app_role_swap_resp_cb (cy_stc_pdstack_context_t *ptrPdStackContext,
     }
     else if ((resp == CY_PDSTACK_CMD_FAILED) || (resp == CY_PDSTACK_SEQ_ABORTED) || (resp == CY_PDSTACK_RES_TIMEOUT))
     {
-        cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-                CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), app_stat->actv_swap_delay, app_initiate_swap);
+        Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+                GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), app_stat->actv_swap_delay, app_initiate_swap);
     }
 
 #if (POWER_ROLE_PREFERENCE_ENABLE)
@@ -255,8 +255,8 @@ static void app_role_swap_resp_cb (cy_stc_pdstack_context_t *ptrPdStackContext,
 
         app_stat->actv_swap_type  = 0;
         app_stat->actv_swap_count = 0;
-        cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-                CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), APP_INITIATE_DR_SWAP_TIMER_PERIOD, app_initiate_swap);
+        Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+                GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), APP_INITIATE_DR_SWAP_TIMER_PERIOD, app_initiate_swap);
     }
 #endif /* (POWER_ROLE_PREFERENCE_ENABLE) */
 }
@@ -274,7 +274,7 @@ static void app_initiate_swap (cy_timer_id_t id, void *context)
     uint8_t swaps_pending = app_stat_p->app_pending_swaps;
 
     /* Stop the timer that triggers swap operation. */
-    cy_sw_timer_stop(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
+    Cy_PdUtils_SwTimer_Stop(ptrPdStackContext->ptrTimerContext, GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
 
     /* Nothing to do if we are not in PD contract. */
     if (!ptrPdStackContext->dpmConfig.contractExist)
@@ -359,8 +359,8 @@ static void app_initiate_swap (cy_timer_id_t id, void *context)
             if (app_stat_p->app_pending_swaps != 0)
             {
                 app_stat_p->actv_swap_type = 0;
-                cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-                        CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), APP_INITIATE_DR_SWAP_TIMER_PERIOD, app_initiate_swap);
+                Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+                        GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), APP_INITIATE_DR_SWAP_TIMER_PERIOD, app_initiate_swap);
             }
         }
         else
@@ -376,8 +376,8 @@ static void app_initiate_swap (cy_timer_id_t id, void *context)
                         false, app_role_swap_resp_cb) != CY_PDSTACK_STAT_SUCCESS)
             {
                 /* Retries in case of AMS failure can always be done with a small delay. */
-                cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-                        CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), APP_INITIATE_DR_SWAP_TIMER_PERIOD, app_initiate_swap);
+                Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+                        GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), APP_INITIATE_DR_SWAP_TIMER_PERIOD, app_initiate_swap);
             }
         }
     }
@@ -427,14 +427,14 @@ void app_contract_handler (cy_stc_pdstack_context_t *ptrPdStackContext)
     }
 
     /* Start a timer that will kick off the Swap state machine. */
-    cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-            CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), delay_reqd, app_initiate_swap);
+    Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+            GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER), delay_reqd, app_initiate_swap);
 }
 
 void app_connect_change_handler (cy_stc_pdstack_context_t *ptrPdStackContext)
 {
     /* Stop all timers used to trigger swap operations. */
-    cy_sw_timer_stop(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
+    Cy_PdUtils_SwTimer_Stop(ptrPdStackContext->ptrTimerContext, GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
     uint8_t port = ptrPdStackContext->port;
 
 #if (POWER_ROLE_PREFERENCE_ENABLE)
@@ -515,7 +515,7 @@ void app_event_handler(cy_stc_pdstack_context_t *ptrPdStackContext,
                         mux_delay = 1U;
                     }
 
-                    cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext, APP_PSOURCE_EN_TIMER, mux_delay,
+                    Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext, APP_PSOURCE_EN_TIMER, mux_delay,
                                 debug_acc_src_psrc_enable_cb);
 #endif /* (!CY_PD_SINK_ONLY) */
                 }
@@ -570,7 +570,7 @@ void app_event_handler(cy_stc_pdstack_context_t *ptrPdStackContext,
                  */
                 if (!typec_only)
                 {
-                    cy_sw_timer_stop (ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_AME_TIMEOUT_TIMER));
+                    Cy_PdUtils_SwTimer_Stop (ptrPdStackContext->ptrTimerContext, GET_APP_TIMER_ID(ptrPdStackContext, APP_AME_TIMEOUT_TIMER));
                 }
             }
 #if (VBUS_OCP_ENABLE || VBUS_SCP_ENABLE || VBUS_OVP_ENABLE || VBUS_UVP_ENABLE)
@@ -630,7 +630,7 @@ void app_event_handler(cy_stc_pdstack_context_t *ptrPdStackContext,
                 app_status[port].app_pending_swaps &= ~APP_DR_SWAP_PENDING;
                 if (app_status[port].actv_swap_type == CY_PDSTACK_DPM_CMD_SEND_DR_SWAP)
                 {
-                    cy_sw_timer_stop(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
+                    Cy_PdUtils_SwTimer_Stop(ptrPdStackContext->ptrTimerContext, GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
                     app_contract_handler (ptrPdStackContext);
                 }
 #endif /* (ROLE_PREFERENCE_ENABLE) */
@@ -695,7 +695,7 @@ void app_event_handler(cy_stc_pdstack_context_t *ptrPdStackContext,
             app_status[port].app_pending_swaps &= ~APP_PR_SWAP_PENDING;
             if (app_status[port].actv_swap_type == CY_PDSTACK_DPM_CMD_SEND_PR_SWAP)
             {
-                cy_sw_timer_stop(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
+                Cy_PdUtils_SwTimer_Stop(ptrPdStackContext->ptrTimerContext, GET_APP_TIMER_ID(ptrPdStackContext, APP_INITIATE_SWAP_TIMER));
                 app_contract_handler (ptrPdStackContext);
             }
             break;
@@ -797,7 +797,7 @@ bool system_sleep(cy_stc_pdstack_context_t *ptrPdStackContext, cy_stc_pdstack_co
             dpm_slept
        )
     {
-        cy_sw_timer_enter_sleep(ptrPdStackContext->ptrTimerContext);
+        Cy_PdUtils_SwTimer_EnterSleep(ptrPdStackContext->ptrTimerContext);
 
         Cy_USBPD_SetReference(ptrPdStackContext->ptrUsbPdContext, true);
 
@@ -842,18 +842,18 @@ bool app_vconn_ocp_cbk(void *context, bool comp_out)
     if (comp_out)
     {
         /* Start a VConn OCP debounce timer */
-        cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-                CY_PDSTACK_GET_PD_TIMER_ID(ptrPdStackContext, PD_VCONN_OCP_DEBOUNCE_TIMER),
+        Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+                CY_PDSTACK_GET_PD_TIMER_ID(ptrPdStackContext, CY_PDSTACK_PD_VCONN_OCP_DEBOUNCE_TIMER),
                 ptrPdStackContext->ptrUsbPdContext->usbpdConfig->vconnOcpConfig->debounce,
                 app_vconn_ocp_tmr_cbk);
     }
     else
     {
         /* Negative edge. Check if the timer is still running. */
-        retval = cy_sw_timer_is_running(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_PD_TIMER_ID(ptrPdStackContext, PD_VCONN_OCP_DEBOUNCE_TIMER));
+        retval = Cy_PdUtils_SwTimer_IsRunning(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_PD_TIMER_ID(ptrPdStackContext, CY_PDSTACK_PD_VCONN_OCP_DEBOUNCE_TIMER));
         if (retval)
         {
-            cy_sw_timer_stop(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_PD_TIMER_ID(ptrPdStackContext, PD_VCONN_OCP_DEBOUNCE_TIMER));
+            Cy_PdUtils_SwTimer_Stop(ptrPdStackContext->ptrTimerContext, CY_PDSTACK_GET_PD_TIMER_ID(ptrPdStackContext, CY_PDSTACK_PD_VCONN_OCP_DEBOUNCE_TIMER));
         }
     }
 
@@ -894,8 +894,8 @@ bool vconn_enable(cy_stc_pdstack_context_t *ptrPdStackContext, uint8_t channel)
     }
 #if defined(CY_DEVICE_PMG1S3)
     /* Start a VConn OCP debounce timer */
-    cy_sw_timer_start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
-            CY_PDSTACK_GET_APP_TIMER_ID(ptrPdStackContext, APP_VCONN_TURN_ON_DELAY_TIMER),
+    Cy_PdUtils_SwTimer_Start(ptrPdStackContext->ptrTimerContext, ptrPdStackContext,
+            GET_APP_TIMER_ID(ptrPdStackContext, APP_VCONN_TURN_ON_DELAY_TIMER),
             APP_VCONN_TURN_ON_DELAY_PERIOD,
             app_vconn_tmr_cbk);
 #endif /* CY_DEVICE_PMG1S3 */
@@ -915,7 +915,7 @@ bool vconn_is_present(cy_stc_pdstack_context_t *ptrPdStackContext)
     return Cy_USBPD_Vconn_IsPresent(ptrPdStackContext->ptrUsbPdContext, ptrPdStackContext->dpmConfig.revPol);
 }
 
-bool vbus_is_present(cy_stc_pdstack_context_t *ptrPdStackContext, uint16_t volt, int8 per)
+bool vbus_is_present(cy_stc_pdstack_context_t *ptrPdStackContext, uint16_t volt, int8_t per)
 {
     uint8_t level;
     uint8_t retVal;
