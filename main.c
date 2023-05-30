@@ -8,7 +8,7 @@
 *
 *
 *******************************************************************************
-* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2023, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -195,6 +195,9 @@ const cy_stc_pdstack_app_cbk_t app_callback =
 #if CY_PD_USB4_SUPPORT_ENABLE
    NULL,
 #endif /* CY_PD_USB4_SUPPORT_ENABLE */
+#if (!CY_PD_SINK_ONLY)
+    send_src_info
+#endif /* (!CY_PD_SINK_ONLY) */
 };
 
 cy_stc_pdstack_app_cbk_t* app_get_callback_ptr(cy_stc_pdstack_context_t * context)

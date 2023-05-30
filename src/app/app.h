@@ -8,7 +8,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021-2022, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2023, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -162,7 +162,7 @@ typedef struct
     uint16_t psnk_cur;                    /**< Current PSink current in 10mA units. */
     uint8_t disc_cbl_pending;             /**< Flag to indicate is cable discovery is pending. */
     uint8_t cbl_disc_id_finished;         /**< Flag to indicate that cable disc id finished. */
-    uint8_t vdm_version;                  /**< Live VDM version. */
+    uint8_t vdm_version;                  /**< Live VDM major version. */
     volatile uint8_t fault_status;        /**< Fault status bits for this port. */
     bool is_vbus_on;                      /**< Is supplying VBUS flag. */
     bool is_vconn_on;                     /**< Is supplying VCONN flag. */
@@ -175,6 +175,7 @@ typedef struct
     uint8_t actv_swap_count;              /**< Denotes number of active swap attempts completed. */
     uint16_t actv_swap_delay;             /**< Delay to be applied between repeated swap attempts. */
     bool debug_acc_attached;              /**< Debug accessory attach status */
+    uint8_t vdm_minor_version;            /**< Live VDM minor version. */
 } app_status_t;
 
 /*****************************************************************************
@@ -452,6 +453,14 @@ void app_contract_handler (cy_stc_pdstack_context_t *ptrPdStackContext);
  * @return void.
  */
 void app_connect_change_handler (cy_stc_pdstack_context_t *ptrPdStackContext);
+
+/**
+ * @brief Callback function to decide whether to send source info message,
+ * pdstack sends src_info message if this function returns true otherwise sends reject message.
+ * @param ptrPdStackContext Pointer to the pdstack context.
+ * @return true if source info can be send
+ */
+bool send_src_info (struct cy_stc_pdstack_context *ptrPdStackContext);
 
 #endif /* _APP_H_ */
 

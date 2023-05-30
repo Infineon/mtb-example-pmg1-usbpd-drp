@@ -23,14 +23,14 @@
                 <Param id="vconn_retain" value="false"/>
                 <Param id="acc_mode_en" value="true"/>
                 <Param id="rp_detach_en" value="true"/>
-                <Param id="port_type" value="0x00"/>
-                <Param id="max_pdp" value="0"/>
-                <Param id="present_pdp" value="0"/>
-                <Param id="reported_pdp" value="0"/>
+                <Param id="port_type" value="0x01"/>
+                <Param id="max_pdp" value="30"/>
+                <Param id="present_pdp" value="30"/>
+                <Param id="reported_pdp" value="30"/>
                 <Param id="rev_maj" value="3"/>
                 <Param id="rev_min" value="1"/>
                 <Param id="ver_maj" value="1"/>
-                <Param id="ver_min" value="0"/>
+                <Param id="ver_min" value="7"/>
             </ParameterGroup>
             <ParameterGroup id="pdo">
                 <ParameterGroup id="src_pdos">
