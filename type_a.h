@@ -1,13 +1,13 @@
 /******************************************************************************
-* File Name: swap.h
+* File Name: type_a.h
 *
-* Description: This header file defines data structures and function prototypes
-*              for handling the Swap requests.
+* Description: TYPE-A port header file
 *
 * Related Document: See README.md
 *
+*
 *******************************************************************************
-* Copyright 2021-2023, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2024, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -39,62 +39,118 @@
 * so agrees to indemnify Cypress against all liability.
 *******************************************************************************/
 
-#ifndef _SWAP_H_
-#define _SWAP_H_
+#ifndef TYPE_A_H_
+#define TYPE_A_H_
 
 /*******************************************************************************
  * Header files including
  ******************************************************************************/
 
-#include "config.h"
-#include "cy_pdstack_common.h"
+#include <stdbool.h>
+#include <stdint.h>
+
+/**
+ * @typedef type_a_status_t
+ * @brief Struct to handle TYPE-A port status
+ */
+typedef struct
+{
+    /* Is TYPEA port enabled? */
+    bool type_a_enabled;
+
+    /* Is TYPEA port connected? */
+    bool type_a_connected;
+
+    /* Current TYPE-A VBUS in mV units. */
+    uint16_t cur_vbus_a;
+
+    /* Whether to perform current based detach detection. */
+    bool detach_det;
+
+    /* Type-A current sense deboucne active. */
+    bool cur_sense_debounce_active;
+
+    /* SDP Mode enabled. */
+    bool sdp_mode_enabled;
+
+    /* The current PWM duty cycle programmed. */
+    uint16_t pwm_duty;
+
+    /* The new PWM duty cycle to be programmed. */
+    uint16_t new_pwm_duty;
+
+} type_a_status_t;
 
 /*****************************************************************************
  * Global Function Declaration
  *****************************************************************************/
+
 /**
- * @brief This function evaluates Data role swap request
+ * @brief Returns status of TYPE-A port.
  *
- * @param port Port index the function is performed for.
- * @param app_resp_handler Application handler callback function.
+ * @param None
+ *
+ * @return TYPE-A port status structure.
+ */
+type_a_status_t* type_a_get_status(void);
+
+/**
+ * @brief Returns state of TYPE-A port.
+ *
+ * @param None
+ *
+ * @return TYPE-A port state.
+ */
+bool type_a_is_idle(void);
+
+/**
+ * @brief Updates TYPE-A port's connection status. The detach_det parameter
+ * indicates whether detach detection based on current draw needs to be done.
+ * This is required for BC 1.2 and Apple charger modes.
+ *
+ * @param true if connected detected, false otherwise
+ * @param true if detach detection needs to be done
+ *
+ * @return None.
+ */
+void type_a_update_status(bool is_connect, bool detach_det);
+
+/**
+ * @brief Controls TYPE-A VBUS.
+ *
+ * @param volt_mV Expected TYPE-A VBUS
  *
  * @return None
  */
-void eval_dr_swap(cy_stc_pdstack_context_t * context, cy_pdstack_app_resp_cbk_t app_resp_handler);
+void type_a_set_voltage(uint16_t volt_mV);
 
 /**
- * @brief This function evaluates Power role swap request
+ * @brief Turns on/off VBUS for TYPE-A port by enabling DC-DC controller.
  *
- * @param port Port index the function is performed for.
- * @param app_resp_handler Application handler callback function.
+ * @param on_off true - Enable VBUS, false - Disable VBUS
  *
  * @return None
  */
-void eval_pr_swap(cy_stc_pdstack_context_t * context, cy_pdstack_app_resp_cbk_t app_resp_handler);
+void type_a_enable_disable_vbus(bool on_off);
 
 /**
- * @brief This function evaluates VConn swap request
+ * @brief Enable or disable TYPE-A port.
  *
- * @param port Port index the function is performed for.
- * @param app_resp_handler Application handler callback function.
+ * @param en_dis true - Enables Type-A false - Disables Type-A 
  *
- * @return None
+ * @return None.
  */
-void eval_vconn_swap(cy_stc_pdstack_context_t * context, cy_pdstack_app_resp_cbk_t app_resp_handler);
+void type_a_port_enable_disable(bool en_dis);
 
-#if CY_PD_REV3_ENABLE
 /**
- * @brief This function evaluates Fast role swap request
+ * @brief Detects TYPE-A port partner disconnect using current sense.
  *
- * @param port Port index the function is performed for.
- * @param app_resp_handler Application handler callback function.
+ * @param None
  *
- * @return None
+ * @return None.
  */
-void eval_fr_swap(cy_stc_pdstack_context_t * context, cy_pdstack_app_resp_cbk_t app_resp_handler);
+void type_a_detect_disconnect(void);
 
-#endif /* CCG_PD_REV3_ENABLE */ 
+#endif /* TYPE_A_H_ */
 
-#endif /* _SWAP_H_ */
 /* End of File */
-

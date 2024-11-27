@@ -7,7 +7,7 @@
 * Related Document: See README.md
 *
 *******************************************************************************
-* Copyright 2021-2023, Cypress Semiconductor Corporation (an Infineon company) or
+* Copyright 2021-2024, Cypress Semiconductor Corporation (an Infineon company) or
 * an affiliate of Cypress Semiconductor Corporation.  All rights reserved.
 *
 * This software, including source code, documentation and related
@@ -41,36 +41,12 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
-#include "cybsp.h"
-#include "ncp81239.h"
-#include "cy_pdutils_sw_timer.h"
-#include "timer_id.h"
 
 /*******************************************************************************
  * Header files including
  ******************************************************************************/
-#ifndef NO_OF_TYPEC_PORTS
-#define NO_OF_TYPEC_PORTS                         (CY_IP_MXUSBPD_INSTANCES)
-#endif /* NO_OF_TYPEC_PORTS */
-
-/*******************************************************************************
- * Enable PD spec Rev 3 support
- ******************************************************************************/
-#if CY_PD_REV3_ENABLE
-    #define CY_PD_FRS_RX_ENABLE                   (0u)
-    #define CY_PD_FRS_TX_ENABLE                   (0u)
-    #define CY_PD_PPS_SRC_ENABLE                  (0u)
-#endif /* CY_PD_REV3_ENABLE */
-
-#if ((defined (CY_DEVICE_PMG1S3)) || (defined (CY_DEVICE_CCG6)))
-#define CCG_PROG_SOURCE_ENABLE                    (1u)
-#elif (defined(CY_DEVICE_CCG3))
-#define CCG_PROG_SOURCE_ENABLE                    (0u)
-#endif
-
-
-/* Enable hardware based DRP toggle for additional power saving. */
-#define CY_PD_HW_DRP_TOGGLE_ENABLE                (0u)
+#include "cybsp.h"
+#include "cy_pdutils_sw_timer.h"
 
 /*
  * Macro defines additional delay in milliseconds before the PD stack starts sending
@@ -78,14 +54,6 @@
  * which require more start up time for PD.
  */
 #define DELAY_SRC_CAP_START_MS                  (100u)
-
-#define PD_PDO_SEL_ALGO                         (0u)
-
-/* VBUS PGDO FET Control selection based on the FET control pin used in the system hardware */
-#define VBUS_FET_CTRL_0                             (1u)
-#define VBUS_FET_CTRL_1                             (0u)
-
-#define VBUS_FET_CTRL                               (VBUS_FET_CTRL_0)
 
 /*******************************************************************************
  * USB-PD SAR ADC Configurations
@@ -98,84 +66,19 @@
 #define APP_VBUS_POLL_ADC_INPUT                 (CY_USBPD_ADC_INPUT_AMUX_B)
 #endif /* defined(CY_DEVICE_CCG3) */
 
-/*******************************************************************************
- * Power Sink (PSINK) controls
- ******************************************************************************/
-
-/* VBUS in discharge enable */
-#define VBUS_IN_DISCHARGE_EN                    (0u)
-
-/* 
- * Allow VBUS_IN discharge below 5V.
- * When VBUS_IN_DISCHARGE_EN macro is enabled, VBUS_IN discharge is enabled for all
- * VBUS downward transitions above 5V, but is disabled for transitions below 5V.
- * Because, for VBUS_IN powered solutions, VBUS_IN should not be accidently
- * brought to the low voltage where system behavior is undefined. 
- * VBUS_IN discharge below 5V may be required for solutions where regulator
- * requires higher discharge strength to set voltage below 5V.
- * It is recommended to enable this feature only for solution which are not
- * VBUS_IN powered.
- */
-#define VBUS_IN_DISCH_BELOW_5V_EN               (0u)
-
-/*******************************************************************************
- * Power Source (PSOURCE) Configuration.
- ******************************************************************************/
-
-/* Time (in ms) allowed for source voltage to become valid. */
-#define APP_PSOURCE_EN_TIMER_PERIOD             (250u)
-
-/* Period (in ms) of VBus validity checks after enabling the power source. */
-#define APP_PSOURCE_EN_MONITOR_TIMER_PERIOD     (1u)
-
-/* Time (in ms) between VBus valid and triggering of PS_RDY. */
-#define APP_PSOURCE_EN_HYS_TIMER_PERIOD         (5u)
-
-/* Time (in ms) for which the VBus_Discharge path will be enabled when turning power source OFF. */
-#define APP_PSOURCE_DIS_TIMER_PERIOD            (600u)
-
-/* Period (in ms) of VBus drop to VSAFE0 checks after power source is turned OFF. */
-#define APP_PSOURCE_DIS_MONITOR_TIMER_PERIOD    (1u)
-
-/* VBus Monitoring is done using internal resistor divider. */
-#define VBUS_MON_INTERNAL                       (1u)
-
-/* Period in ms for turning on VBus FET. */
-#define APP_VBUS_FET_ON_TIMER_PERIOD           (5u)
-
-/* Period in ms for turning off VBus FET. */
-#define APP_VBUS_FET_OFF_TIMER_PERIOD           (1u)
-
-#if (defined (CY_DEVICE_PMG1S3))
-/* Enable / Disable VBUS soft start feature */
-#define VBUS_SOFT_START_ENABLE                  (0u)
-#endif /* (defined (CY_DEVICE_PMG1S3)) */
-
-#if ((defined (CY_DEVICE_PMG1S3)) || (defined (CY_DEVICE_CCG6)))
-/* Function/Macro to set P1 source voltage to contract value. */
-#define APP_VBUS_SET_VOLT_P1(mV)                    \
-{                                                   \
-    set_pd_ctrl_voltage(TYPEC_PORT_0_IDX, mV);      \
-}
-/* Function/Macro to set P2 source voltage to contract value. */
-#define APP_VBUS_SET_VOLT_P2(mV)                    \
-{                                                   \
-    set_pd_ctrl_voltage(TYPEC_PORT_1_IDX, mV);      \
-}
-
-#elif (defined(CY_DEVICE_CCG3))
+#if (defined(CY_DEVICE_CCG3))
 /* Function/Macro to set P1 source voltage to 5V. */
 #define APP_VBUS_SET_5V_P1()                        \
 {                                                   \
-   Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 0);              \
-   Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 0);              \
+   Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 0);         \
+   Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 0);         \
 }
 
 /* Function/Macro to set P1 source voltage to 9V. */
 #define APP_VBUS_SET_9V_P1()                        \
 {                                                   \
-   Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 1);              \
-   Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 0);              \
+   Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 1);         \
+   Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 0);         \
 }
 
 /* Function/Macro to set P1 source voltage to 12V. Not supported on CY4531. */
@@ -187,8 +90,8 @@
 /* Function/Macro to set P1 source voltage to 15V. */
 #define APP_VBUS_SET_15V_P1()                       \
 {                                                   \
-    Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 0);             \
-    Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 1);             \
+    Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 0);        \
+    Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 1);        \
 }
 
 /* Function/Macro to set P1 source voltage to 19V. Not supported on CY4531. */
@@ -197,89 +100,52 @@
 /* Function/Macro to set P1 source voltage to 20V. */
 #define APP_VBUS_SET_20V_P1()                       \
 {                                                   \
-    Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 1);             \
-    Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 1);             \
+    Cy_GPIO_Write(VSEL1_PORT, VSEL1_PIN, 1);        \
+    Cy_GPIO_Write(VSEL2_PORT, VSEL2_PIN, 1);        \
 }
-#endif /* (defined (CY_DEVICE_PMG1S3)) */
+#endif /* (defined(CY_DEVICE_PMG1S3) || defined(CY_DEVICE_CCG6)) */
 
-/*******************************************************************************
- * VBus monitor configuration.
- ******************************************************************************/
+#ifndef APP_FW_LED_ENABLE
+#define APP_FW_LED_ENABLE                          (0u)
+#endif /* APP_FW_LED_ENABLE */
 
-/* Allowed VBus valid margin as percentage of expected voltage. */
-#define VBUS_TURN_ON_MARGIN                     (-20)
-
-/* Allowed VBus valid margin (as percentage of expected voltage) before detach detection is triggered. */
-#define VBUS_TURN_OFF_MARGIN                    (-20)
-
-/* Allowed margin over expected voltage (as percentage) for negative VBus voltage transitions. */
-#define VBUS_DISCHARGE_MARGIN                   (20)
-
-/* Allowed margin over 5V before the provider FET is turned OFF when discharging to VSAFE0. */
-#define VBUS_DISCHARGE_TO_5V_MARGIN             (10)
-
-/*******************************************************************************
- * System fault configuration features.
- ******************************************************************************/
-
-/* 
- * Enable/Disable delay between fault retries for Type-C/PD faults.
+#if APP_FW_LED_ENABLE
+/*
+ * Port0 activity indicator LED timer.
  */
-#define FAULT_RETRY_DELAY_EN                        (0u)
-
-#if FAULT_RETRY_DELAY_EN
-
-/* 
- * Delay between fault retries in mS.
- */
-#define FAULT_RETRY_DELAY_MS                        (500u)
-
-#endif /* FAULT_RETRY_DELAY_EN */
-
-/* 
- * Enable/Disable delayed infinite fault recovery for Type-C/PD faults.
- * Fault recovery shall be tried with a fixed delay after configured 
- * fault retry count is elapsed. 
- */
-#define FAULT_INFINITE_RECOVERY_EN                  (0u)
-
-#if FAULT_INFINITE_RECOVERY_EN
-
-/* 
- * Delayed fault recovery period in mS.
- */
-#define FAULT_INFINITE_RECOVERY_DELAY_MS            (5000u)
-
-#endif /* FAULT_INFINITE_RECOVERY_EN */
-
-/* Enable watchdog hardware reset for CPU lock-up recovery */
-#define WATCHDOG_HARDWARE_RESET_ENABLE              (1u)
-
-/* Disable device reset on error (watchdog expiry or hard fault). */
-#define RESET_ON_ERROR_ENABLE                       (1u)
+#define LED1_TIMER_ID                               (CY_PDUTILS_TIMER_USER_START_ID)
 
 /*
- * Watchdog reset period in ms. This should be set to a value greater than
- * 500 ms to avoid significant increase in power consumption.
+ * Port1 activity indicator LED timer.
  */
-#define WATCHDOG_RESET_PERIOD_MS                    (750u)
+#define LED2_TIMER_ID                               (CY_PDUTILS_TIMER_USER_START_ID + 1u)
 
-/* Enable tracking of maximum stack usage. */
-#define STACK_USAGE_CHECK_ENABLE                    (0u)
+/*
+ * The LED toggle period (ms).
+ */
+#define LED_TIMER_PERIOD                            (500u)
+#endif /* APP_FW_LED_ENABLE */
 
-/*******************************************************************************
- * Firmware feature configuration.
- ******************************************************************************/
-/* Enable saving only SVIDs which are supported by CCG. */
-#define SAVE_SUPP_SVID_ONLY                         (1u)
+/* Enable dual regulator support for TYPE-A VBUS. */
+#define TYPE_A_DUAL_REG_ENABLE                      (1u)
 
-/** Timer period in ms for providing delay for VConn Gate Pull Up enable. */
-#define APP_VCONN_TURN_ON_DELAY_PERIOD              (1u)
+/* TYPE-A port PWM step change timer. */
+#define TYPE_A_PWM_STEP_TIMER_ID                    (CY_PDUTILS_TIMER_USER_START_ID + 2u)
 
-/***********************************************************************************/
-/* Enable selection of data/power role preference. */
-#define ROLE_PREFERENCE_ENABLE                      (0u)
-#define POWER_ROLE_PREFERENCE_ENABLE                (0u)
+/* TYPE-A current sense timer. */
+#define TYPE_A_CUR_SENSE_TIMER_ID                   (CY_PDUTILS_TIMER_USER_START_ID + 3u)
+
+/* TYPE-A regulator switch timer. */
+#define TYPE_A_REG_SWITCH_TIMER_ID                  (CY_PDUTILS_TIMER_USER_START_ID + 4u)
+
+/* TYPE-A port PWM step change time in ms. */
+#define TYPE_A_PWM_STEP_TIMER_PERIOD                (1)
+
+/* TYPE-A current sense timer period. */
+#define TYPE_A_CUR_SENSE_TIMER_PERIOD               (30000)
+
+/* TYPE-A regulator switch timer period in ms. */
+#define TYPE_A_REG_SWITCH_TIMER_PERIOD              (10)
 
 #endif /* _CONFIG_H_ */
 
